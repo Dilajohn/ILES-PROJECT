@@ -1,0 +1,18 @@
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:9px; font-family:'DM Sans',sans-serif; font-weight:600; cursor:pointer; transition:all .18s; white-space:nowrap; text-decoration:none; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.sm  { font-size:12px; padding:7px 14px; }
+.md  { font-size:14px; padding:10px 20px; }
+.lg  { font-size:15px; padding:13px 26px; }
+.full{ width:100%; }
+.primary   { background:#0a1f44; color:#fff; }
+.primary:hover:not(:disabled) { background:#1565c0; }
+.secondary { background:#e8ecf4; color:#1a2540; }
+.secondary:hover:not(:disabled) { background:#d8dde9; }
+.teal      { background:#00bfa5; color:#fff; }
+.teal:hover:not(:disabled) { background:#00897b; }
+.danger    { background:#dc2626; color:#fff; }
+.danger:hover:not(:disabled) { background:#991b1b; }
+.ghost     { background:transparent; color:#1a2540; border:1.5px solid #d8dde9; }
+.ghost:hover:not(:disabled) { background:#e8ecf4; }
+.spinner   { width:16px; height:16px; border:2px solid rgba(255,255,255,.35); border-top:2px solid #fff; border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }

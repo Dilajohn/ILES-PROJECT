@@ -1,0 +1,17 @@
+.overlay  { position:fixed; inset:0; background:rgba(10,31,68,.65); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; animation:fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal    { background:#f4f6fb; border-radius:20px; padding:40px 36px; max-width:400px; width:100%; text-align:center; position:relative; box-shadow:0 24px 64px rgba(0,0,0,.22); animation:slideUp .25s ease; }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.closeBtn { position:absolute; top:14px; right:16px; background:none; border:none; font-size:22px; color:#94a3b8; cursor:pointer; line-height:1; transition:color .15s; }
+.closeBtn:hover { color:#1a2540; }
+.iconWrap  { display:flex; justify-content:center; margin-bottom:16px; }
+.title    { font-family:'Sora',sans-serif; font-size:22px; font-weight:700; color:#0a1f44; margin-bottom:10px; }
+.sub      { font-size:14px; color:#6b7a99; line-height:1.6; margin-bottom:28px; }
+.actions  { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.btnPrimary { background:#0a1f44; color:#fff; border:none; padding:13px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; transition:background .18s; }
+.btnPrimary:hover { background:#1565c0; }
+.btnSecondary { background:#e8f5e9; color:#1B5E20; border:2px solid #C8E6C9; padding:13px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; transition:background .18s; }
+.btnSecondary:hover { background:#C8E6C9; }
+.note  { font-size:13px; color:#94a3b8; }
+.link  { color:#1565c0; font-weight:600; cursor:pointer; }
+.link:hover { text-decoration:underline; }

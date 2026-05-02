@@ -1,0 +1,23 @@
+.heading { font-family:'Sora',sans-serif; font-size:22px; font-weight:700; color:#0a1f44; text-align:center; margin-bottom:24px; letter-spacing:-.3px; }
+.field   { display:flex; flex-direction:column; gap:6px; margin-bottom:18px; }
+.label   { font-size:12px; font-weight:600; color:#3d4f6e; text-transform:uppercase; letter-spacing:.6px; }
+.input   { border:1.5px solid #d8dde9; border-radius:10px; padding:11px 14px; font-size:14px; font-family:'DM Sans',sans-serif; color:#1a2540; background:#fff; width:100%; transition:border-color .18s,box-shadow .18s; outline:none; appearance:none; }
+.input:focus  { border-color:#1565c0; box-shadow:0 0 0 3px rgba(21,101,192,.1); }
+.input::placeholder { color:#94a3b8; }
+.inputErr { border-color:#dc2626 !important; box-shadow:0 0 0 3px rgba(220,38,38,.08) !important; }
+.err      { font-size:12px; color:#dc2626; margin-top:-2px; display:flex; align-items:center; gap:4px; }
+.passwordWrap { position:relative; }
+.passwordWrap .input { padding-right:44px; }
+.eyeBtn   { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px; display:flex; align-items:center; transition:color .15s; }
+.eyeBtn:hover { color:#1565c0; }
+.strengthWrap { margin-top:6px; }
+.strengthBar  { height:4px; background:#d8dde9; border-radius:4px; overflow:hidden; margin-bottom:4px; }
+.strengthFill { height:100%; border-radius:4px; transition:width .3s,background .3s; }
+.strengthText { font-size:11px; font-weight:500; }
+.forgot   { text-align:right; margin:-10px 0 14px; }
+.link     { color:#1565c0; font-size:13px; font-weight:600; text-decoration:none; transition:color .15s; }
+.link:hover { color:#0a1f44; text-decoration:underline; }
+.switchText { text-align:center; font-size:13px; color:#6b7a99; margin-top:20px; line-height:1.6; }
+.divider  { display:flex; align-items:center; gap:12px; margin:20px 0; color:#d8dde9; font-size:12px; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:#d8dde9; }
+.submitWrap { margin-top:6px; }

@@ -1,0 +1,10 @@
+.alert { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; animation:slideIn .2s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.info    { background:#e3f0fb; color:#0c447c; border:1px solid #bfdbfe; }
+.success { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+.warning { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.danger  { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+.icon    { flex-shrink:0; margin-top:1px; }
+.msg     { flex:1; line-height:1.5; }
+.closeBtn{ margin-left:auto; background:none; border:none; font-size:16px; cursor:pointer; opacity:.6; padding:0 2px; transition:opacity .15s; flex-shrink:0; color:inherit; }
+.closeBtn:hover { opacity:1; }

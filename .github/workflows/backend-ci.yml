@@ -1,0 +1,52 @@
+name: backend-ci
+
+on:
+  push:
+    paths:
+      - "myproject/backend/**"
+  pull_request:
+    paths:
+      - "myproject/backend/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: myproject/backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: iles
+          POSTGRES_USER: iles
+          POSTGRES_PASSWORD: iles
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U iles"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python manage.py migrate
+        env:
+          POSTGRES_DB: iles
+          POSTGRES_USER: iles
+          POSTGRES_PASSWORD: iles
+          POSTGRES_HOST: 127.0.0.1
+          DJANGO_SECRET_KEY: test-key
+          DJANGO_SETTINGS_MODULE: config.settings.dev
+      - run: python manage.py test
+        env:
+          POSTGRES_DB: iles
+          POSTGRES_USER: iles
+          POSTGRES_PASSWORD: iles
+          POSTGRES_HOST: 127.0.0.1
+          DJANGO_SECRET_KEY: test-key
+          DJANGO_SETTINGS_MODULE: config.settings.dev
