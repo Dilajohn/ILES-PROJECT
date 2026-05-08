@@ -24,6 +24,11 @@ function mapStudent(user) {
   };
 }
 
+function filterStudentsByPlacements(studentUsers, placementRows) {
+  const supervisedIds = new Set(placementRows.map(item => item.student));
+  return studentUsers.map(mapStudent).filter(student => supervisedIds.has(student.id));
+}
+
 function mapActivity(activity) {
   return {
     id: activity.id,
@@ -60,14 +65,15 @@ function CohortPage({ user }) {
   };
 
   const loadData = async () => {
-    const [studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+    const [placementRows, studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+      internshipService.fetchPlacements(),
       userService.fetchStudents(),
       internshipService.fetchActivities(),
       internshipService.fetchAttendance(),
       internshipService.fetchEvaluations(),
       internshipService.fetchPeriods(),
     ]);
-    const mappedStudents = studentUsers.map(mapStudent);
+    const mappedStudents = filterStudentsByPlacements(studentUsers, placementRows);
     setStudents(mappedStudents);
     setActivities(activityRows.map(mapActivity));
     setAttendance(attendanceRows);
@@ -92,14 +98,15 @@ function CohortPage({ user }) {
     let isMounted = true;
 
     const run = async () => {
-      const [studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+      const [placementRows, studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+        internshipService.fetchPlacements(),
         userService.fetchStudents(),
         internshipService.fetchActivities(),
         internshipService.fetchAttendance(),
         internshipService.fetchEvaluations(),
         internshipService.fetchPeriods(),
       ]);
-      const mappedStudents = studentUsers.map(mapStudent);
+      const mappedStudents = filterStudentsByPlacements(studentUsers, placementRows);
 
       if (!isMounted) return;
 
@@ -280,7 +287,9 @@ function StudentsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    userService.fetchStudents().then(data => setStudents(data.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, data]) => {
+      setStudents(filterStudentsByPlacements(data, placements));
+    });
   }, []);
 
   const filtered = students.filter(student => `${student.fullName} ${student.regNo}`.toLowerCase().includes(search.toLowerCase()));
@@ -312,8 +321,8 @@ function AttendanceMonitorPage() {
   const [attendance, setAttendance] = useState([]);
 
   useEffect(() => {
-    Promise.all([userService.fetchStudents(), internshipService.fetchAttendance()]).then(([studentUsers, attendanceRows]) => {
-      setStudents(studentUsers.map(mapStudent));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents(), internshipService.fetchAttendance()]).then(([placements, studentUsers, attendanceRows]) => {
+      setStudents(filterStudentsByPlacements(studentUsers, placements));
       setAttendance(attendanceRows);
     });
   }, []);

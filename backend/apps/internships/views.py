@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -147,8 +148,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
             return [IsAdminOrMentor()]
         if self.action in {"approve_activity", "return_activity"}:
             return [IsAdminOrLecturer()]
-        if self.action == "destroy":
-            return [IsAdmin()]
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
@@ -173,6 +172,29 @@ class ActivityViewSet(viewsets.ModelViewSet):
             status=ActivityLog.Status.PENDING,
         )
         create_audit_log(self.request.user, "create", f"Submitted activity: {activity.title}")
+
+    def perform_update(self, serializer):
+        activity = self.get_object()
+        user = self.request.user
+        if user.role == User.Role.STUDENT and activity.status not in {
+            ActivityLog.Status.PENDING,
+            ActivityLog.Status.REJECTED,
+        }:
+            raise PermissionDenied("Only pending or rejected activities can be edited.")
+        serializer.save()
+        create_audit_log(user, "edit", f"Updated activity: {activity.title}")
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if user.role == User.Role.ADMIN:
+            create_audit_log(user, "delete", f"Deleted activity: {instance.title}")
+            instance.delete()
+            return
+        if user.role == User.Role.STUDENT and instance.student_id == user.id and instance.status == ActivityLog.Status.REJECTED:
+            create_audit_log(user, "delete", f"Deleted rejected activity: {instance.title}")
+            instance.delete()
+            return
+        raise PermissionDenied("You do not have permission to delete this activity.")
 
     @action(detail=True, methods=["post"], url_path="validate")
     def validate_activity(self, request, pk=None):
@@ -244,7 +266,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
 
 class EvaluationViewSet(viewsets.ModelViewSet):
-    queryset = Evaluation.objects.select_related("student", "lecturer", "period").all()
+    queryset = Evaluation.objects.select_related("student", "lecturer", "period").order_by("-updated_at", "-created_at")
     serializer_class = EvaluationSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ["student", "lecturer", "period"]

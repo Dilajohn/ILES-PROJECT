@@ -105,6 +105,7 @@ function LogbookPage({ user }) {
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('All');
   const [form, setForm] = useState({ title: '', desc: '', skills: '', hrs: '' });
+  const [error, setError] = useState('');
 
   const loadEntries = async () => {
     if (!user?.id) return;
@@ -130,6 +131,7 @@ function LogbookPage({ user }) {
   const submit = async () => {
     if (!form.title.trim()) return;
     setSaving(true);
+    setError('');
     try {
       if (editId) {
         await internshipService.updateActivity(editId, {
@@ -151,6 +153,8 @@ function LogbookPage({ user }) {
       setShowForm(false);
       setEditId(null);
       await loadEntries();
+    } catch (nextError) {
+      setError(nextError?.response?.data?.detail || nextError?.message || 'Could not save activity entry.');
     } finally {
       setSaving(false);
     }
@@ -166,6 +170,7 @@ function LogbookPage({ user }) {
           {showForm ? 'Cancel' : '+ New Entry'}
         </button>
       </div>
+      {error && <div className={styles.emptyState}>{error}</div>}
       {showForm && (
         <div className={styles.formCard}>
           <div className={styles.formGrid}>
@@ -193,7 +198,7 @@ function LogbookPage({ user }) {
         </div>
       )}
       <div className={styles.filterBar} style={{ marginBottom: 14 }}>
-        {['All', 'Draft', 'Pending', 'Validated', 'Rejected'].map(value => (
+        {['All', 'Pending', 'Validated', 'Rejected'].map(value => (
           <button key={value} className={`${styles.fb}${filter === value ? ' ' + styles.fbOn : ''}`} onClick={() => setFilter(value)}>{value}</button>
         ))}
       </div>
@@ -210,7 +215,7 @@ function LogbookPage({ user }) {
               <span className={`${styles.chip} ${styles.hrs}`}>{entry.hrs} hrs</span>
             </div>
           </div>
-          {(entry.status === 'draft' || entry.status === 'rejected') && (
+          {entry.status === 'rejected' && (
             <div className={styles.logActions}>
               <button className={styles.abEdit} onClick={() => { setEditId(entry.id); setShowForm(true); setForm({ title: entry.title, desc: entry.desc, skills: entry.skills, hrs: String(entry.hrs) }); }}>Edit</button>
               <button className={styles.abDel} onClick={async () => { await internshipService.deleteActivity(entry.id); await loadEntries(); }}>Delete</button>
@@ -554,6 +559,7 @@ function ProfilePage({ user }) {
 
 function OverviewPage({ user, clock }) {
   const [activities, setActivities] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
 
@@ -564,7 +570,9 @@ function OverviewPage({ user, clock }) {
       internshipService.fetchAttendance({ student: user.id }),
       internshipService.fetchEvaluations({ student: user.id }),
     ]).then(([activitiesData, attendanceData, evaluations]) => {
-      setActivities(activitiesData.map(normalizeActivity).slice(0, 3));
+      const normalizedActivities = activitiesData.map(normalizeActivity);
+      setActivities(normalizedActivities);
+      setRecentActivities(normalizedActivities.slice(0, 3));
       setAttendance(attendanceData.map(normalizeAttendance));
       setEvaluation(evaluations[0] || null);
     });
@@ -596,10 +604,10 @@ function OverviewPage({ user, clock }) {
         ))}
       </div>
       <div className={styles.twoCol}>
-        <div className={styles.panel}>
+          <div className={styles.panel}>
           <div className={styles.panelHdr}><span className={styles.panelTitle}>Recent Activity Log</span></div>
-          {activities.length === 0 && <div className={styles.emptyState}>No activities yet.</div>}
-          {activities.map(activity => (
+          {recentActivities.length === 0 && <div className={styles.emptyState}>No activities yet.</div>}
+          {recentActivities.map(activity => (
             <div key={activity.id} className={styles.logEntry}>
               <div className={styles.logDate}><span className={styles.logDay}>{activity.date?.slice(8) || '--'}</span><span className={styles.logMon}>{activity.date ? new Date(activity.date).toLocaleString('en', { month: 'short' }) : '---'}</span></div>
               <div className={styles.logBody}>

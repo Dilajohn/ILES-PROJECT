@@ -15,6 +15,11 @@ function mapStudent(user) {
   };
 }
 
+function filterStudentsByPlacements(studentUsers, placementRows) {
+  const menteeIds = new Set(placementRows.map(item => item.student));
+  return studentUsers.map(mapStudent).filter(student => menteeIds.has(student.id));
+}
+
 function mapActivity(activity) {
   return {
     id: activity.id,
@@ -167,7 +172,9 @@ function MenteesPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    userService.fetchStudents().then(items => setStudents(items.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, items]) => {
+      setStudents(filterStudentsByPlacements(items, placements));
+    });
   }, []);
 
   const filtered = students.filter(student => `${student.fullName} ${student.regNo}`.toLowerCase().includes(search.toLowerCase()));
@@ -194,7 +201,9 @@ function CreatePage({ user }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    userService.fetchStudents().then(items => setStudents(items.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, items]) => {
+      setStudents(filterStudentsByPlacements(items, placements));
+    });
   }, []);
 
   const submit = async () => {
@@ -269,7 +278,9 @@ function QRScannerPage() {
   const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    userService.fetchStudents().then(items => setStudents(items.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, items]) => {
+      setStudents(filterStudentsByPlacements(items, placements));
+    });
     return () => {
       stream?.getTracks().forEach(track => track.stop());
     };

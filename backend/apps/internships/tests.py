@@ -146,3 +146,84 @@ class StaffActivityCreationTests(TestCase):
         activity = ActivityLog.objects.get(title="Assigned task")
         self.assertEqual(activity.student, self.student)
         self.assertEqual(activity.mentor, self.mentor)
+
+
+class StudentActivityPermissionTests(TestCase):
+    def setUp(self):
+        self.user_model = get_user_model()
+        self.student = self.user_model.objects.create_user(
+            email="student3@example.com",
+            password="StrongPass123!",
+            full_name="Student Three",
+            role="student",
+        )
+        self.mentor = self.user_model.objects.create_user(
+            email="mentor3@example.com",
+            password="StrongPass123!",
+            full_name="Mentor Three",
+            role="mentor",
+        )
+        self.lecturer = self.user_model.objects.create_user(
+            email="lecturer3@example.com",
+            password="StrongPass123!",
+            full_name="Lecturer Three",
+            role="lecturer",
+        )
+        self.company = Company.objects.create(
+            name="Gamma Labs",
+            sector="Software",
+            district="Kampala",
+            max_capacity=5,
+        )
+        self.period = InternshipPeriod.objects.create(
+            name="Student Permission Period",
+            start_date="2026-06-01",
+            end_date="2026-09-30",
+            weeks=16,
+            status="active",
+        )
+        placement = Placement.objects.create(
+            student=self.student,
+            company=self.company,
+            lecturer=self.lecturer,
+            mentor=self.mentor,
+            period=self.period,
+            created_by=self.lecturer,
+        )
+        self.rejected = ActivityLog.objects.create(
+            placement=placement,
+            student=self.student,
+            mentor=self.mentor,
+            title="Rejected activity",
+            description="Needs revision",
+            skills="python",
+            hours_spent=2,
+            activity_date="2026-06-10",
+            status="rejected",
+        )
+        self.validated = ActivityLog.objects.create(
+            placement=placement,
+            student=self.student,
+            mentor=self.mentor,
+            title="Validated activity",
+            description="Already approved",
+            skills="testing",
+            hours_spent=3,
+            activity_date="2026-06-11",
+            status="validated",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.student)
+
+    def test_student_can_delete_rejected_activity(self):
+        response = self.client.delete(f"/api/v1/activities/{self.rejected.id}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(ActivityLog.objects.filter(id=self.rejected.id).exists())
+
+    def test_student_cannot_update_validated_activity(self):
+        response = self.client.patch(
+            f"/api/v1/activities/{self.validated.id}/",
+            {"title": "Changed title"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)

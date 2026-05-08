@@ -458,7 +458,7 @@ function PlacementsTab({ showToast }) {
                 <td style={{ fontSize: 12, color: '#6b7a99' }}>{placement.company_name}</td>
                 <td style={{ fontSize: 12, color: '#6b7a99' }}>{placement.lecturer_name}</td>
                 <td style={{ fontSize: 12, color: '#6b7a99' }}>{placement.mentor_name}</td>
-                <td style={{ fontSize: 12 }}>{placement.period}</td>
+                <td style={{ fontSize: 12 }}>{placement.period_name || placement.period}</td>
                 <td><button className={styles.abDel} onClick={async () => { await internshipService.deletePlacement(placement.id); showToast('Placement removed.'); await loadData(); }}>Remove</button></td>
               </tr>
             ))}
