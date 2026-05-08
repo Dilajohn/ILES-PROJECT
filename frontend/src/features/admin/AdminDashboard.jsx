@@ -479,14 +479,21 @@ function PlacementsTab({ showToast }) {
   );
 }
 
-function ReportsTab() {
+function ReportsTab({ showToast }) {
   return (
     <div className={styles.reportsGrid}>
       {['placements', 'attendance', 'validation'].map(type => (
         <div key={type} className={styles.reportCard} style={{ '--rc': '#1565c0' }}>
           <div className={styles.reportTitle}>{type} report</div>
           <div className={styles.reportSub}>Backend-generated export</div>
-          <button className={styles.reportBtn} style={{ background: '#1565c0' }} onClick={async () => { const blob = await reportingService.downloadReport(type); downloadBlob(blob, `ILES_admin_${type}_${new Date().toISOString().slice(0, 10)}.txt`); }}>Download</button>
+          <button className={styles.reportBtn} style={{ background: '#1565c0' }} onClick={async () => {
+            try {
+              const blob = await reportingService.downloadReport(type);
+              downloadBlob(blob, `ILES_admin_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+            } catch (error) {
+              showToast(error?.response?.data?.detail || error?.message || `Could not download the ${type} report.`);
+            }
+          }}>Download</button>
         </div>
       ))}
     </div>
@@ -613,7 +620,7 @@ export default function AdminDashboard({ page }) {
         {activeTab === 'companies' && <CompaniesTab showToast={showToast} />}
         {activeTab === 'periods' && <PeriodsTab showToast={showToast} />}
         {activeTab === 'placements' && <PlacementsTab showToast={showToast} />}
-        {activeTab === 'reports' && <ReportsTab />}
+        {activeTab === 'reports' && <ReportsTab showToast={showToast} />}
         {activeTab === 'audit' && <AuditTab />}
       </div>
     </div>

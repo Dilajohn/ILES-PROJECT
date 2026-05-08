@@ -8,11 +8,11 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model  = StudentProfile
         fields = ["registration_number", "programme", "academic_year",
-                  "university", "department"]
+                  "university", "department", "status"]
 
 
 class UserSerializer(serializers.ModelSerializer):
-    student_profile = StudentProfileSerializer(read_only=True)
+    student_profile = StudentProfileSerializer(required=False)
 
     class Meta:
         model  = User
@@ -21,6 +21,41 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active", "date_joined", "last_login", "student_profile",
         ]
         read_only_fields = ["id", "role", "date_joined", "last_login"]
+
+    def validate_email(self, value):
+        email = value.strip().lower()
+        queryset = User.objects.filter(email__iexact=email)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return email
+
+    def _sync_student_profile(self, user, profile_data):
+        if profile_data is None or user.role != User.Role.STUDENT:
+            return
+        profile, _ = StudentProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                "registration_number": profile_data.get("registration_number") or f"MAK/{str(user.id)[:8].upper()}",
+                "programme": profile_data.get("programme") or "BSc Computer Science",
+                "academic_year": profile_data.get("academic_year") or "Year 3",
+                "department": profile_data.get("department") or "Computer Science",
+                "university": profile_data.get("university") or "Makerere University",
+                "status": profile_data.get("status") or StudentProfile.Status.ACTIVE,
+            },
+        )
+        for field, value in profile_data.items():
+            setattr(profile, field, value)
+        profile.save()
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop("student_profile", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        self._sync_student_profile(instance, profile_data)
+        return instance
 
 
 class SignupSerializer(serializers.ModelSerializer):

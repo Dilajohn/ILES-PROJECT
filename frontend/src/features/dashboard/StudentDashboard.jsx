@@ -63,6 +63,15 @@ function normalizeNotification(notification) {
   };
 }
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function NotifPanel({ userId, onClose }) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(userId);
   const normalized = notifications.map(normalizeNotification);
@@ -386,19 +395,17 @@ function ScoresPage({ user }) {
 function ReportsPage() {
   const [generating, setGenerating] = useState(null);
   const [generated, setGenerated] = useState({});
+  const [error, setError] = useState('');
 
   const generate = async (type) => {
     setGenerating(type);
+    setError('');
     try {
-      const reportType = type === 'activity' ? 'validation' : type;
-      const blob = await internshipService.generateReport(reportType);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ILES_${type}_${new Date().toISOString().slice(0, 10)}.txt`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const blob = await internshipService.generateReport(type);
+      downloadBlob(blob, `ILES_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
       setGenerated(current => ({ ...current, [type]: true }));
+    } catch (nextError) {
+      setError(nextError?.response?.data?.detail || nextError?.message || 'Could not generate report.');
     } finally {
       setGenerating(null);
     }
@@ -407,6 +414,7 @@ function ReportsPage() {
   return (
     <div className={styles.subPage}>
       <div className={styles.subHeader}><div><h2 className={styles.subTitle}>Reports</h2><p className={styles.subSub}>Generate and download internship documents from backend data</p></div></div>
+      {error && <div className={styles.emptyState}>{error}</div>}
       <div className={styles.reportsGrid}>
         {[
           ['activity', 'Activity Log Report', 'All submitted activities', '#00bfa5'],

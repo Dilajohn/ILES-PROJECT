@@ -351,17 +351,25 @@ function AttendanceMonitorPage() {
 }
 
 function ReportsPage() {
+  const [error, setError] = useState('');
+
   return (
     <div className={styles.subWrap}>
       <div className={styles.subHdr}><h2 className={styles.subTitle}>Reports</h2></div>
+      {error && <div className={styles.emptyState}>{error}</div>}
       <div className={styles.reportsGrid}>
         {['placements', 'attendance', 'validation'].map(type => (
           <div key={type} className={styles.reportCard} style={{ '--rc': '#7c3aed' }}>
             <div className={styles.reportTitle}>{type} report</div>
             <div className={styles.reportSub}>Backend-generated export</div>
             <button className={styles.reportBtn} style={{ background: '#7c3aed' }} onClick={async () => {
-              const blob = await reportingService.downloadReport(type);
-              downloadBlob(blob, `ILES_lecturer_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+              try {
+                setError('');
+                const blob = await reportingService.downloadReport(type);
+                downloadBlob(blob, `ILES_lecturer_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+              } catch (nextError) {
+                setError(nextError?.response?.data?.detail || nextError?.message || `Could not download the ${type} report.`);
+              }
             }}>Download</button>
           </div>
         ))}
