@@ -89,7 +89,47 @@ function CohortPage({ user }) {
   };
 
   useEffect(() => {
-    void loadData();
+    let isMounted = true;
+
+    const run = async () => {
+      const [studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+        userService.fetchStudents(),
+        internshipService.fetchActivities(),
+        internshipService.fetchAttendance(),
+        internshipService.fetchEvaluations(),
+        internshipService.fetchPeriods(),
+      ]);
+      const mappedStudents = studentUsers.map(mapStudent);
+
+      if (!isMounted) return;
+
+      setStudents(mappedStudents);
+      setActivities(activityRows.map(mapActivity));
+      setAttendance(attendanceRows);
+      setEvaluations(evaluationRows);
+      setPeriods(periodRows);
+      if (!selectedStudent && mappedStudents.length) {
+        const first = mappedStudents[0];
+        queueMicrotask(() => {
+          if (!isMounted) return;
+          setSelectedStudent(first);
+          const existing = evaluationRows.find(item => item.student === first.id);
+          if (existing) {
+            setGrades({
+              skills: existing.skills,
+              professionalism: existing.professionalism,
+              development: existing.development,
+              deliverables: existing.deliverables,
+            });
+          }
+        });
+      }
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const selectStudent = (student) => {

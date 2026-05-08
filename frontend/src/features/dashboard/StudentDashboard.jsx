@@ -104,7 +104,18 @@ function LogbookPage({ user }) {
   };
 
   useEffect(() => {
-    void loadEntries();
+    let isMounted = true;
+
+    const run = async () => {
+      if (!user?.id) return;
+      const data = await internshipService.fetchActivities({ student: user.id });
+      if (isMounted) setEntries(data.map(normalizeActivity));
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id]);
 
   const submit = async () => {
@@ -230,7 +241,23 @@ function AttendancePage({ user }) {
   }, []);
 
   useEffect(() => {
-    void loadAttendance();
+    let isMounted = true;
+
+    const run = async () => {
+      if (!user?.id) return;
+      const data = (await internshipService.fetchAttendance({ student: user.id })).map(normalizeAttendance);
+      if (!isMounted) return;
+      setRecords(data);
+      const today = new Date().toISOString().slice(0, 10);
+      const current = data.find(record => record.date === today) || null;
+      setTodayRec(current);
+      setClockedIn(!!(current?.clockIn && !current?.clockOut));
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id]);
 
   const handleClockIn = () => {

@@ -57,7 +57,24 @@ function OverviewPage() {
   };
 
   useEffect(() => {
-    void loadActivities();
+    let isMounted = true;
+
+    const run = async () => {
+      const data = await internshipService.fetchActivities();
+      const mapped = data.map(mapActivity);
+      if (!isMounted) return;
+      setActivities(mapped);
+      if (!selected && mapped.length) {
+        queueMicrotask(() => {
+          if (isMounted) setSelected(mapped[0]);
+        });
+      }
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const approve = async () => {
