@@ -71,7 +71,7 @@ function downloadBlob(blob, filename) {
 }
 
 function OverviewTab({ overview, navigate }) {
-  const { users, students, companies, placements, activities, audits } = overview;
+  const { students, companies, placements, activities, audits } = overview;
   return (
     <div className={styles.twoCol}>
       <div className={styles.panel}>
@@ -127,7 +127,7 @@ function StudentsTab({ showToast }) {
   const loadStudents = async () => setStudents((await userService.fetchStudents()).map(mapStudent));
 
   useEffect(() => {
-    loadStudents();
+    void loadStudents();
   }, []);
 
   const save = async () => {
@@ -217,7 +217,7 @@ function UsersTab({ user, showToast }) {
   const loadUsers = async () => setAllUsers((await userService.fetchAllUsers()).map(mapUser));
 
   useEffect(() => {
-    loadUsers();
+    void loadUsers();
   }, []);
 
   const filtered = allUsers.filter(item => `${item.fullName} ${item.email}`.toLowerCase().includes(search.toLowerCase()));
@@ -266,7 +266,7 @@ function CompaniesTab({ showToast }) {
   const loadCompanies = async () => setCompanies(await internshipService.fetchCompanies());
 
   useEffect(() => {
-    loadCompanies();
+    void loadCompanies();
   }, []);
 
   return (
@@ -314,7 +314,7 @@ function PeriodsTab({ showToast }) {
   const loadPeriods = async () => setPeriods(await internshipService.fetchPeriods());
 
   useEffect(() => {
-    loadPeriods();
+    void loadPeriods();
   }, []);
 
   return (
@@ -370,7 +370,7 @@ function PlacementsTab({ showToast }) {
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   return (
@@ -487,11 +487,13 @@ export default function AdminDashboard({ page }) {
   };
 
   useEffect(() => {
-    if (page) setActiveTab(page);
+    if (page) {
+      queueMicrotask(() => setActiveTab(page));
+    }
   }, [page]);
 
   useEffect(() => {
-    loadOverview();
+    void loadOverview();
   }, [activeTab]);
 
   const navigate = (tab) => {

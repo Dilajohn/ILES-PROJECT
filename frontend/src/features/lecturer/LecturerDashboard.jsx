@@ -89,7 +89,7 @@ function CohortPage({ user }) {
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   const selectStudent = (student) => {

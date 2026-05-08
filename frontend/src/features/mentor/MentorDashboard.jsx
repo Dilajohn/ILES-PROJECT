@@ -38,7 +38,7 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-function OverviewPage({ user }) {
+function OverviewPage() {
   const [activities, setActivities] = useState([]);
   const [selected, setSelected] = useState(null);
   const [note, setNote] = useState('');
@@ -57,7 +57,7 @@ function OverviewPage({ user }) {
   };
 
   useEffect(() => {
-    loadActivities();
+    void loadActivities();
   }, []);
 
   const approve = async () => {
@@ -239,7 +239,7 @@ function CreatePage({ user }) {
   );
 }
 
-function QRScannerPage({ user }) {
+function QRScannerPage() {
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [result, setResult] = useState(null);
@@ -320,7 +320,7 @@ export default function MentorDashboard({ page }) {
   const currentPage = page || 'overview';
   const titles = { mentees: 'My Mentees', qr: 'QR Scanner', create: 'Create Activity', reports: 'Reports' };
 
-  if (currentPage === 'overview' || currentPage === 'validation') return <OverviewPage user={user} />;
+  if (currentPage === 'overview' || currentPage === 'validation') return <OverviewPage />;
 
   return (
     <div className={styles.wrap}>
@@ -330,7 +330,7 @@ export default function MentorDashboard({ page }) {
       </div>
       <div className={styles.content}>
         {currentPage === 'mentees' && <MenteesPage />}
-        {currentPage === 'qr' && <QRScannerPage user={user} />}
+        {currentPage === 'qr' && <QRScannerPage />}
         {currentPage === 'create' && <CreatePage user={user} />}
         {currentPage === 'reports' && <ReportsPage />}
       </div>

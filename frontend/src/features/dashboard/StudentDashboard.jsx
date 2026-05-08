@@ -104,7 +104,7 @@ function LogbookPage({ user }) {
   };
 
   useEffect(() => {
-    loadEntries();
+    void loadEntries();
   }, [user?.id]);
 
   const submit = async () => {
@@ -230,7 +230,7 @@ function AttendancePage({ user }) {
   }, []);
 
   useEffect(() => {
-    loadAttendance();
+    void loadAttendance();
   }, [user?.id]);
 
   const handleClockIn = () => {

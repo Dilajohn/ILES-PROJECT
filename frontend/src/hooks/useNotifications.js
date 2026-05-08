@@ -18,7 +18,7 @@ export function useNotifications(userId) {
   }, [userId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const markRead = useCallback(async (id) => {
