@@ -18,13 +18,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: iles
-          POSTGRES_USER: iles
-          POSTGRES_PASSWORD: iles
+          POSTGRES_DB: ci_test_db
+          POSTGRES_USER: ci_test_user
+          POSTGRES_PASSWORD: ci_test_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U iles"
+          --health-cmd="pg_isready -U ci_test_user"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -36,17 +36,17 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python manage.py migrate
         env:
-          POSTGRES_DB: iles
-          POSTGRES_USER: iles
-          POSTGRES_PASSWORD: iles
+          POSTGRES_DB: ci_test_db
+          POSTGRES_USER: ci_test_user
+          POSTGRES_PASSWORD: ci_test_password
           POSTGRES_HOST: 127.0.0.1
-          DJANGO_SECRET_KEY: test-key
+          DJANGO_SECRET_KEY: ci-test-secret-key
           DJANGO_SETTINGS_MODULE: config.settings.dev
       - run: python manage.py test
         env:
-          POSTGRES_DB: iles
-          POSTGRES_USER: iles
-          POSTGRES_PASSWORD: iles
+          POSTGRES_DB: ci_test_db
+          POSTGRES_USER: ci_test_user
+          POSTGRES_PASSWORD: ci_test_password
           POSTGRES_HOST: 127.0.0.1
-          DJANGO_SECRET_KEY: test-key
+          DJANGO_SECRET_KEY: ci-test-secret-key
           DJANGO_SETTINGS_MODULE: config.settings.dev
