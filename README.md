@@ -380,3 +380,74 @@ The README intentionally reflects the project as it exists now:
 - QR is integrated in the frontend experience but is not yet modeled as a dedicated persisted backend workflow
 
 That distinction matters when explaining the system to supervisors, examiners, or future developers.
+
+## Deployment Guide
+
+The recommended production setup for this project is:
+
+- `frontend/` deployed as a Vercel frontend project
+- `backend/` deployed as a separate Vercel Python project
+- PostgreSQL hosted on Neon
+
+### Recommended deployment order
+
+1. Create the Neon database project.
+2. Collect the production database connection values.
+3. Create the Vercel backend project from `backend/`.
+4. Add backend environment variables.
+5. Deploy the backend.
+6. Run Django migrations against production.
+7. Verify backend endpoints such as `/health/` and `/api/docs/`.
+8. Create the Vercel frontend project from `frontend/`.
+9. Set the frontend API base URL to the deployed backend.
+10. Deploy the frontend and run end-to-end checks.
+
+### Backend production environment variables
+
+Use these variables for the Vercel backend project:
+
+```env
+DJANGO_SETTINGS_MODULE=config.settings.prod
+DJANGO_SECRET_KEY=generate-a-long-random-secret
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=your-backend-project.vercel.app
+DJANGO_TIME_ZONE=Africa/Kampala
+
+POSTGRES_DB=neondb
+POSTGRES_USER=your_neon_user
+POSTGRES_PASSWORD=your_neon_password
+POSTGRES_HOST=your-neon-host
+POSTGRES_PORT=5432
+POSTGRES_SSLMODE=require
+POSTGRES_CONN_MAX_AGE=60
+
+CORS_ALLOWED_ORIGINS=https://your-frontend-project.vercel.app
+CSRF_TRUSTED_ORIGINS=https://your-frontend-project.vercel.app
+
+DJANGO_LOG_LEVEL=INFO
+APP_LOG_LEVEL=INFO
+```
+
+Optional variables if background services are introduced later:
+
+```env
+REDIS_URL=
+CELERY_BROKER_URL=
+CELERY_RESULT_BACKEND=
+```
+
+### Frontend production environment variables
+
+Use this variable for the Vercel frontend project:
+
+```env
+VITE_API_URL=https://your-backend-project.vercel.app/api/v1
+```
+
+### Production readiness notes
+
+- Use Neon SSL in production with `POSTGRES_SSLMODE=require`.
+- Keep `DJANGO_DEBUG=False` in production.
+- Set `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `CSRF_TRUSTED_ORIGINS` to the real Vercel domains.
+- Vercel is a strong fit for the frontend and request-response Django API.
+- If you later depend heavily on Celery workers, long-running background jobs, or persistent file storage, you may want to keep the frontend on Vercel and move those backend workloads to a platform built for persistent workers.
