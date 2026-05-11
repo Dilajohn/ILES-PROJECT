@@ -9,10 +9,19 @@ The system is built around four core goals:
 - support validation and grading workflows
 - generate reports and audit-friendly records
 
+## Project Team
+
+| Name | Student Number | Registration Number |
+| --- | --- | --- |
+| Okuja Emmanuel Dila John | 2500728777 | 25/U/28777/PSA |
+| Asiimwe Nicole Praise | 2500703337 | 25/U/03337/PS |
+| Nanfuka Justine | 2500703528 | 25/U/03528/PS |
+| Wasswa Kateregga Maurice | 2500703613 | 25/U/03613/PSA |
+
 ## Repository Layout
 
 ```text
-myproject/
+Groupproject/
 |-- backend/   Django + Django REST Framework API
 `-- frontend/  React + Vite client application
 ```
