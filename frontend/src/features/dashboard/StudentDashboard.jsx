@@ -63,6 +63,15 @@ function normalizeNotification(notification) {
   };
 }
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function NotifPanel({ userId, onClose }) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(userId);
   const normalized = notifications.map(normalizeNotification);
@@ -96,6 +105,7 @@ function LogbookPage({ user }) {
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('All');
   const [form, setForm] = useState({ title: '', desc: '', skills: '', hrs: '' });
+  const [error, setError] = useState('');
 
   const loadEntries = async () => {
     if (!user?.id) return;
@@ -104,12 +114,24 @@ function LogbookPage({ user }) {
   };
 
   useEffect(() => {
-    void loadEntries();
+    let isMounted = true;
+
+    const run = async () => {
+      if (!user?.id) return;
+      const data = await internshipService.fetchActivities({ student: user.id });
+      if (isMounted) setEntries(data.map(normalizeActivity));
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id]);
 
   const submit = async () => {
     if (!form.title.trim()) return;
     setSaving(true);
+    setError('');
     try {
       if (editId) {
         await internshipService.updateActivity(editId, {
@@ -131,6 +153,8 @@ function LogbookPage({ user }) {
       setShowForm(false);
       setEditId(null);
       await loadEntries();
+    } catch (nextError) {
+      setError(nextError?.response?.data?.detail || nextError?.message || 'Could not save activity entry.');
     } finally {
       setSaving(false);
     }
@@ -146,6 +170,7 @@ function LogbookPage({ user }) {
           {showForm ? 'Cancel' : '+ New Entry'}
         </button>
       </div>
+      {error && <div className={styles.emptyState}>{error}</div>}
       {showForm && (
         <div className={styles.formCard}>
           <div className={styles.formGrid}>
@@ -173,7 +198,7 @@ function LogbookPage({ user }) {
         </div>
       )}
       <div className={styles.filterBar} style={{ marginBottom: 14 }}>
-        {['All', 'Draft', 'Pending', 'Validated', 'Rejected'].map(value => (
+        {['All', 'Pending', 'Validated', 'Rejected'].map(value => (
           <button key={value} className={`${styles.fb}${filter === value ? ' ' + styles.fbOn : ''}`} onClick={() => setFilter(value)}>{value}</button>
         ))}
       </div>
@@ -190,7 +215,7 @@ function LogbookPage({ user }) {
               <span className={`${styles.chip} ${styles.hrs}`}>{entry.hrs} hrs</span>
             </div>
           </div>
-          {(entry.status === 'draft' || entry.status === 'rejected') && (
+          {entry.status === 'rejected' && (
             <div className={styles.logActions}>
               <button className={styles.abEdit} onClick={() => { setEditId(entry.id); setShowForm(true); setForm({ title: entry.title, desc: entry.desc, skills: entry.skills, hrs: String(entry.hrs) }); }}>Edit</button>
               <button className={styles.abDel} onClick={async () => { await internshipService.deleteActivity(entry.id); await loadEntries(); }}>Delete</button>
@@ -230,7 +255,23 @@ function AttendancePage({ user }) {
   }, []);
 
   useEffect(() => {
-    void loadAttendance();
+    let isMounted = true;
+
+    const run = async () => {
+      if (!user?.id) return;
+      const data = (await internshipService.fetchAttendance({ student: user.id })).map(normalizeAttendance);
+      if (!isMounted) return;
+      setRecords(data);
+      const today = new Date().toISOString().slice(0, 10);
+      const current = data.find(record => record.date === today) || null;
+      setTodayRec(current);
+      setClockedIn(!!(current?.clockIn && !current?.clockOut));
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id]);
 
   const handleClockIn = () => {
@@ -359,19 +400,17 @@ function ScoresPage({ user }) {
 function ReportsPage() {
   const [generating, setGenerating] = useState(null);
   const [generated, setGenerated] = useState({});
+  const [error, setError] = useState('');
 
   const generate = async (type) => {
     setGenerating(type);
+    setError('');
     try {
-      const reportType = type === 'activity' ? 'validation' : type;
-      const blob = await internshipService.generateReport(reportType);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ILES_${type}_${new Date().toISOString().slice(0, 10)}.txt`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const blob = await internshipService.generateReport(type);
+      downloadBlob(blob, `ILES_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
       setGenerated(current => ({ ...current, [type]: true }));
+    } catch (nextError) {
+      setError(nextError?.response?.data?.detail || nextError?.message || 'Could not generate report.');
     } finally {
       setGenerating(null);
     }
@@ -380,6 +419,7 @@ function ReportsPage() {
   return (
     <div className={styles.subPage}>
       <div className={styles.subHeader}><div><h2 className={styles.subTitle}>Reports</h2><p className={styles.subSub}>Generate and download internship documents from backend data</p></div></div>
+      {error && <div className={styles.emptyState}>{error}</div>}
       <div className={styles.reportsGrid}>
         {[
           ['activity', 'Activity Log Report', 'All submitted activities', '#00bfa5'],
@@ -519,6 +559,7 @@ function ProfilePage({ user }) {
 
 function OverviewPage({ user, clock }) {
   const [activities, setActivities] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
 
@@ -529,7 +570,9 @@ function OverviewPage({ user, clock }) {
       internshipService.fetchAttendance({ student: user.id }),
       internshipService.fetchEvaluations({ student: user.id }),
     ]).then(([activitiesData, attendanceData, evaluations]) => {
-      setActivities(activitiesData.map(normalizeActivity).slice(0, 3));
+      const normalizedActivities = activitiesData.map(normalizeActivity);
+      setActivities(normalizedActivities);
+      setRecentActivities(normalizedActivities.slice(0, 3));
       setAttendance(attendanceData.map(normalizeAttendance));
       setEvaluation(evaluations[0] || null);
     });
@@ -561,10 +604,10 @@ function OverviewPage({ user, clock }) {
         ))}
       </div>
       <div className={styles.twoCol}>
-        <div className={styles.panel}>
+          <div className={styles.panel}>
           <div className={styles.panelHdr}><span className={styles.panelTitle}>Recent Activity Log</span></div>
-          {activities.length === 0 && <div className={styles.emptyState}>No activities yet.</div>}
-          {activities.map(activity => (
+          {recentActivities.length === 0 && <div className={styles.emptyState}>No activities yet.</div>}
+          {recentActivities.map(activity => (
             <div key={activity.id} className={styles.logEntry}>
               <div className={styles.logDate}><span className={styles.logDay}>{activity.date?.slice(8) || '--'}</span><span className={styles.logMon}>{activity.date ? new Date(activity.date).toLocaleString('en', { month: 'short' }) : '---'}</span></div>
               <div className={styles.logBody}>

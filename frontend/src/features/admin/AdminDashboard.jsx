@@ -127,7 +127,17 @@ function StudentsTab({ showToast }) {
   const loadStudents = async () => setStudents((await userService.fetchStudents()).map(mapStudent));
 
   useEffect(() => {
-    void loadStudents();
+    let isMounted = true;
+
+    const run = async () => {
+      const items = (await userService.fetchStudents()).map(mapStudent);
+      if (isMounted) setStudents(items);
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const save = async () => {
@@ -217,7 +227,17 @@ function UsersTab({ user, showToast }) {
   const loadUsers = async () => setAllUsers((await userService.fetchAllUsers()).map(mapUser));
 
   useEffect(() => {
-    void loadUsers();
+    let isMounted = true;
+
+    const run = async () => {
+      const items = (await userService.fetchAllUsers()).map(mapUser);
+      if (isMounted) setAllUsers(items);
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filtered = allUsers.filter(item => `${item.fullName} ${item.email}`.toLowerCase().includes(search.toLowerCase()));
@@ -266,7 +286,17 @@ function CompaniesTab({ showToast }) {
   const loadCompanies = async () => setCompanies(await internshipService.fetchCompanies());
 
   useEffect(() => {
-    void loadCompanies();
+    let isMounted = true;
+
+    const run = async () => {
+      const items = await internshipService.fetchCompanies();
+      if (isMounted) setCompanies(items);
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
@@ -314,7 +344,17 @@ function PeriodsTab({ showToast }) {
   const loadPeriods = async () => setPeriods(await internshipService.fetchPeriods());
 
   useEffect(() => {
-    void loadPeriods();
+    let isMounted = true;
+
+    const run = async () => {
+      const items = await internshipService.fetchPeriods();
+      if (isMounted) setPeriods(items);
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
@@ -370,7 +410,39 @@ function PlacementsTab({ showToast }) {
   };
 
   useEffect(() => {
-    void loadData();
+    let isMounted = true;
+
+    const run = async () => {
+      const [placementRows, studentUsers, companyRows, lecturerUsers, mentorUsers, periodRows] = await Promise.all([
+        internshipService.fetchPlacements(),
+        userService.fetchStudents(),
+        internshipService.fetchCompanies(),
+        userService.fetchLecturers(),
+        userService.fetchMentors(),
+        internshipService.fetchPeriods(),
+      ]);
+
+      if (!isMounted) return;
+
+      setPlacements(placementRows);
+      setStudents(studentUsers.map(mapStudent));
+      setCompanies(companyRows);
+      setLecturers(lecturerUsers.map(mapUser));
+      setMentors(mentorUsers.map(mapUser));
+      setPeriods(periodRows);
+      if (!form.periodId && periodRows[0]) {
+        queueMicrotask(() => {
+          if (isMounted) {
+            setForm(current => ({ ...current, periodId: periodRows[0].id }));
+          }
+        });
+      }
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
@@ -386,7 +458,7 @@ function PlacementsTab({ showToast }) {
                 <td style={{ fontSize: 12, color: '#6b7a99' }}>{placement.company_name}</td>
                 <td style={{ fontSize: 12, color: '#6b7a99' }}>{placement.lecturer_name}</td>
                 <td style={{ fontSize: 12, color: '#6b7a99' }}>{placement.mentor_name}</td>
-                <td style={{ fontSize: 12 }}>{placement.period}</td>
+                <td style={{ fontSize: 12 }}>{placement.period_name || placement.period}</td>
                 <td><button className={styles.abDel} onClick={async () => { await internshipService.deletePlacement(placement.id); showToast('Placement removed.'); await loadData(); }}>Remove</button></td>
               </tr>
             ))}
@@ -407,14 +479,21 @@ function PlacementsTab({ showToast }) {
   );
 }
 
-function ReportsTab() {
+function ReportsTab({ showToast }) {
   return (
     <div className={styles.reportsGrid}>
       {['placements', 'attendance', 'validation'].map(type => (
         <div key={type} className={styles.reportCard} style={{ '--rc': '#1565c0' }}>
           <div className={styles.reportTitle}>{type} report</div>
           <div className={styles.reportSub}>Backend-generated export</div>
-          <button className={styles.reportBtn} style={{ background: '#1565c0' }} onClick={async () => { const blob = await reportingService.downloadReport(type); downloadBlob(blob, `ILES_admin_${type}_${new Date().toISOString().slice(0, 10)}.txt`); }}>Download</button>
+          <button className={styles.reportBtn} style={{ background: '#1565c0' }} onClick={async () => {
+            try {
+              const blob = await reportingService.downloadReport(type);
+              downloadBlob(blob, `ILES_admin_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+            } catch (error) {
+              showToast(error?.response?.data?.detail || error?.message || `Could not download the ${type} report.`);
+            }
+          }}>Download</button>
         </div>
       ))}
     </div>
@@ -467,25 +546,6 @@ export default function AdminDashboard({ page }) {
     setTimeout(() => setToast(''), 3500);
   };
 
-  const loadOverview = async () => {
-    const [users, students, companies, placements, activities, audits] = await Promise.all([
-      userService.fetchAllUsers(),
-      userService.fetchStudents(),
-      internshipService.fetchCompanies(),
-      internshipService.fetchPlacements(),
-      internshipService.fetchActivities(),
-      reportingService.fetchAuditLogs(),
-    ]);
-    setOverview({
-      users: users.map(mapUser),
-      students: students.map(mapStudent),
-      companies,
-      placements,
-      activities,
-      audits,
-    });
-  };
-
   useEffect(() => {
     if (page) {
       queueMicrotask(() => setActiveTab(page));
@@ -493,7 +553,34 @@ export default function AdminDashboard({ page }) {
   }, [page]);
 
   useEffect(() => {
-    void loadOverview();
+    let isMounted = true;
+
+    const run = async () => {
+      const [users, students, companies, placements, activities, audits] = await Promise.all([
+        userService.fetchAllUsers(),
+        userService.fetchStudents(),
+        internshipService.fetchCompanies(),
+        internshipService.fetchPlacements(),
+        internshipService.fetchActivities(),
+        reportingService.fetchAuditLogs(),
+      ]);
+
+      if (!isMounted) return;
+
+      setOverview({
+        users: users.map(mapUser),
+        students: students.map(mapStudent),
+        companies,
+        placements,
+        activities,
+        audits,
+      });
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, [activeTab]);
 
   const navigate = (tab) => {
@@ -533,7 +620,7 @@ export default function AdminDashboard({ page }) {
         {activeTab === 'companies' && <CompaniesTab showToast={showToast} />}
         {activeTab === 'periods' && <PeriodsTab showToast={showToast} />}
         {activeTab === 'placements' && <PlacementsTab showToast={showToast} />}
-        {activeTab === 'reports' && <ReportsTab />}
+        {activeTab === 'reports' && <ReportsTab showToast={showToast} />}
         {activeTab === 'audit' && <AuditTab />}
       </div>
     </div>

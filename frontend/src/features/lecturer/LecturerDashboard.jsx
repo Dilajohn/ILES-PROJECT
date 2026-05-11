@@ -24,6 +24,11 @@ function mapStudent(user) {
   };
 }
 
+function filterStudentsByPlacements(studentUsers, placementRows) {
+  const supervisedIds = new Set(placementRows.map(item => item.student));
+  return studentUsers.map(mapStudent).filter(student => supervisedIds.has(student.id));
+}
+
 function mapActivity(activity) {
   return {
     id: activity.id,
@@ -60,14 +65,15 @@ function CohortPage({ user }) {
   };
 
   const loadData = async () => {
-    const [studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+    const [placementRows, studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+      internshipService.fetchPlacements(),
       userService.fetchStudents(),
       internshipService.fetchActivities(),
       internshipService.fetchAttendance(),
       internshipService.fetchEvaluations(),
       internshipService.fetchPeriods(),
     ]);
-    const mappedStudents = studentUsers.map(mapStudent);
+    const mappedStudents = filterStudentsByPlacements(studentUsers, placementRows);
     setStudents(mappedStudents);
     setActivities(activityRows.map(mapActivity));
     setAttendance(attendanceRows);
@@ -89,7 +95,48 @@ function CohortPage({ user }) {
   };
 
   useEffect(() => {
-    void loadData();
+    let isMounted = true;
+
+    const run = async () => {
+      const [placementRows, studentUsers, activityRows, attendanceRows, evaluationRows, periodRows] = await Promise.all([
+        internshipService.fetchPlacements(),
+        userService.fetchStudents(),
+        internshipService.fetchActivities(),
+        internshipService.fetchAttendance(),
+        internshipService.fetchEvaluations(),
+        internshipService.fetchPeriods(),
+      ]);
+      const mappedStudents = filterStudentsByPlacements(studentUsers, placementRows);
+
+      if (!isMounted) return;
+
+      setStudents(mappedStudents);
+      setActivities(activityRows.map(mapActivity));
+      setAttendance(attendanceRows);
+      setEvaluations(evaluationRows);
+      setPeriods(periodRows);
+      if (!selectedStudent && mappedStudents.length) {
+        const first = mappedStudents[0];
+        queueMicrotask(() => {
+          if (!isMounted) return;
+          setSelectedStudent(first);
+          const existing = evaluationRows.find(item => item.student === first.id);
+          if (existing) {
+            setGrades({
+              skills: existing.skills,
+              professionalism: existing.professionalism,
+              development: existing.development,
+              deliverables: existing.deliverables,
+            });
+          }
+        });
+      }
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const selectStudent = (student) => {
@@ -240,7 +287,9 @@ function StudentsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    userService.fetchStudents().then(data => setStudents(data.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, data]) => {
+      setStudents(filterStudentsByPlacements(data, placements));
+    });
   }, []);
 
   const filtered = students.filter(student => `${student.fullName} ${student.regNo}`.toLowerCase().includes(search.toLowerCase()));
@@ -272,8 +321,8 @@ function AttendanceMonitorPage() {
   const [attendance, setAttendance] = useState([]);
 
   useEffect(() => {
-    Promise.all([userService.fetchStudents(), internshipService.fetchAttendance()]).then(([studentUsers, attendanceRows]) => {
-      setStudents(studentUsers.map(mapStudent));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents(), internshipService.fetchAttendance()]).then(([placements, studentUsers, attendanceRows]) => {
+      setStudents(filterStudentsByPlacements(studentUsers, placements));
       setAttendance(attendanceRows);
     });
   }, []);
@@ -311,17 +360,25 @@ function AttendanceMonitorPage() {
 }
 
 function ReportsPage() {
+  const [error, setError] = useState('');
+
   return (
     <div className={styles.subWrap}>
       <div className={styles.subHdr}><h2 className={styles.subTitle}>Reports</h2></div>
+      {error && <div className={styles.emptyState}>{error}</div>}
       <div className={styles.reportsGrid}>
         {['placements', 'attendance', 'validation'].map(type => (
           <div key={type} className={styles.reportCard} style={{ '--rc': '#7c3aed' }}>
             <div className={styles.reportTitle}>{type} report</div>
             <div className={styles.reportSub}>Backend-generated export</div>
             <button className={styles.reportBtn} style={{ background: '#7c3aed' }} onClick={async () => {
-              const blob = await reportingService.downloadReport(type);
-              downloadBlob(blob, `ILES_lecturer_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+              try {
+                setError('');
+                const blob = await reportingService.downloadReport(type);
+                downloadBlob(blob, `ILES_lecturer_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+              } catch (nextError) {
+                setError(nextError?.response?.data?.detail || nextError?.message || `Could not download the ${type} report.`);
+              }
             }}>Download</button>
           </div>
         ))}

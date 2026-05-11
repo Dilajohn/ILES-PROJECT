@@ -15,6 +15,11 @@ function mapStudent(user) {
   };
 }
 
+function filterStudentsByPlacements(studentUsers, placementRows) {
+  const menteeIds = new Set(placementRows.map(item => item.student));
+  return studentUsers.map(mapStudent).filter(student => menteeIds.has(student.id));
+}
+
 function mapActivity(activity) {
   return {
     id: activity.id,
@@ -57,7 +62,24 @@ function OverviewPage() {
   };
 
   useEffect(() => {
-    void loadActivities();
+    let isMounted = true;
+
+    const run = async () => {
+      const data = await internshipService.fetchActivities();
+      const mapped = data.map(mapActivity);
+      if (!isMounted) return;
+      setActivities(mapped);
+      if (!selected && mapped.length) {
+        queueMicrotask(() => {
+          if (isMounted) setSelected(mapped[0]);
+        });
+      }
+    };
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const approve = async () => {
@@ -150,7 +172,9 @@ function MenteesPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    userService.fetchStudents().then(items => setStudents(items.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, items]) => {
+      setStudents(filterStudentsByPlacements(items, placements));
+    });
   }, []);
 
   const filtered = students.filter(student => `${student.fullName} ${student.regNo}`.toLowerCase().includes(search.toLowerCase()));
@@ -177,7 +201,9 @@ function CreatePage({ user }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    userService.fetchStudents().then(items => setStudents(items.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, items]) => {
+      setStudents(filterStudentsByPlacements(items, placements));
+    });
   }, []);
 
   const submit = async () => {
@@ -185,19 +211,24 @@ function CreatePage({ user }) {
       setError('Please select a student and enter a title.');
       return;
     }
-    await internshipService.createActivity({
-      student: form.studentId,
-      mentor: user?.id,
-      title: form.title,
-      description: form.desc,
-      skills: form.skills,
-      hours_spent: Number(form.hrs) || 1,
-      activity_date: form.date,
-    });
-    setSaved(true);
-    setError('');
-    setForm(current => ({ ...current, title: '', desc: '', skills: '', hrs: '' }));
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await internshipService.createActivity({
+        student: form.studentId,
+        mentor: user?.id,
+        title: form.title,
+        description: form.desc,
+        skills: form.skills,
+        hours_spent: Number(form.hrs) || 1,
+        activity_date: form.date,
+      });
+      setSaved(true);
+      setError('');
+      setForm(current => ({ ...current, studentId: '', title: '', desc: '', skills: '', hrs: '', date: current.date }));
+      setTimeout(() => setSaved(false), 2500);
+    } catch (nextError) {
+      setSaved(false);
+      setError(nextError?.response?.data?.detail || nextError?.message || 'Could not create activity.');
+    }
   };
 
   return (
@@ -247,7 +278,9 @@ function QRScannerPage() {
   const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    userService.fetchStudents().then(items => setStudents(items.map(mapStudent)));
+    Promise.all([internshipService.fetchPlacements(), userService.fetchStudents()]).then(([placements, items]) => {
+      setStudents(filterStudentsByPlacements(items, placements));
+    });
     return () => {
       stream?.getTracks().forEach(track => track.stop());
     };
@@ -296,17 +329,25 @@ function QRScannerPage() {
 }
 
 function ReportsPage() {
+  const [error, setError] = useState('');
+
   return (
     <div className={styles.subWrap}>
       <div className={styles.subHdr}><div><h2 className={styles.subTitle}>Reports</h2></div></div>
+      {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13 }}>{error}</div>}
       <div className={styles.reportsGrid}>
         {['validation', 'attendance', 'placements'].map(type => (
           <div key={type} className={styles.reportCard} style={{ '--rc': '#1565c0' }}>
             <div className={styles.reportTitle}>{type} report</div>
             <div className={styles.reportSub}>Backend-generated export</div>
             <button className={styles.reportBtn} style={{ background: '#1565c0' }} onClick={async () => {
-              const blob = await reportingService.downloadReport(type);
-              downloadBlob(blob, `ILES_mentor_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+              try {
+                setError('');
+                const blob = await reportingService.downloadReport(type);
+                downloadBlob(blob, `ILES_mentor_${type}_${new Date().toISOString().slice(0, 10)}.txt`);
+              } catch (nextError) {
+                setError(nextError?.response?.data?.detail || nextError?.message || `Could not download the ${type} report.`);
+              }
             }}>Download</button>
           </div>
         ))}
