@@ -21,7 +21,7 @@ The system is built around four core goals:
 ## Repository Layout
 
 ```text
-Groupproject/
+ILES GROUP PROJECT/
 |-- backend/   Django + Django REST Framework API
 `-- frontend/  React + Vite client application
 ```
