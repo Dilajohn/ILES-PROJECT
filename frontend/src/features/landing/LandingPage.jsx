@@ -41,7 +41,7 @@ const QUICK_CARDS = [
   { icon:'📍', pct:'Track', label:'GPS Attendance Clock-in',  color:'#1565c0', page:'/dashboard/student/attendance' },
   { icon:'⭐', pct:'View',  label:'Supervisor Evaluations',   color:'#7c3aed', page:'/dashboard/student/scores' },
 ];
-
+ 
 export default function LandingPage() {
   const navigate   = useNavigate();
   const { user }   = useAuth();
