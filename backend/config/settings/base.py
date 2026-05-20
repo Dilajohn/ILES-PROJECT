@@ -8,6 +8,9 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="unsafe-dev-secret")
 DEBUG = config("DJANGO_DEBUG", cast=bool, default=False)
 ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", cast=Csv(), default="127.0.0.1,localhost")
+_render_external_hostname = config("RENDER_EXTERNAL_HOSTNAME", default="")
+if _render_external_hostname and _render_external_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_render_external_hostname)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
