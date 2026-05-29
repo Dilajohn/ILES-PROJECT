@@ -277,7 +277,7 @@ export default function LandingPage() {
       <footer className={styles.footer}>
         <div className={styles.footerLogo}>ILES<span>.</span></div>
         <p className={styles.footerText}>© 2026 ILES — Internship Logging &amp; Evaluation System</p>
-        <p className={styles.footerSub}>Powered by Geolocation · QR Verification · Secure Cloud Infrastructure · Makerere University COCIT</p>
+        <p className={styles.footerSub}>Powered by Geolocation · QR Verification · Secure Cloud Infrastructure · Makerere University COCIS</p>
       </footer>
     </div>
   );
