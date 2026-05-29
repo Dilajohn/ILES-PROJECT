@@ -42,8 +42,14 @@ export function useNotifications(userId) {
     };
 
     void run();
+
+    const interval = setInterval(() => {
+      void run();
+    }, 30000);
+
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
   }, [userId]);
 

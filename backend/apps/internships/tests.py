@@ -147,6 +147,23 @@ class StaffActivityCreationTests(TestCase):
         self.assertEqual(activity.student, self.student)
         self.assertEqual(activity.mentor, self.mentor)
 
+    def test_mentor_can_fetch_activities_with_null_placement(self):
+        activity = ActivityLog.objects.create(
+            placement=None,
+            student=self.student,
+            mentor=self.mentor,
+            title="Activity without placement",
+            description="Doing self study",
+            skills="independent",
+            hours_spent=4,
+            activity_date="2026-05-10",
+            status="pending",
+        )
+        response = self.client.get("/api/v1/activities/")
+        self.assertEqual(response.status_code, 200)
+        activity_ids = [act["id"] for act in response.json()["results"]]
+        self.assertIn(activity.id, activity_ids)
+
 
 class StudentActivityPermissionTests(TestCase):
     def setUp(self):
@@ -227,3 +244,15 @@ class StudentActivityPermissionTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_student_updating_rejected_activity_resets_status_to_pending(self):
+        self.assertEqual(self.rejected.status, "rejected")
+        response = self.client.patch(
+            f"/api/v1/activities/{self.rejected.id}/",
+            {"title": "Updated rejected activity title"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.rejected.refresh_from_db()
+        self.assertEqual(self.rejected.status, "pending")
+        self.assertEqual(self.rejected.title, "Updated rejected activity title")

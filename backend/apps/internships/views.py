@@ -138,7 +138,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
         if user.role == User.Role.STUDENT:
             return qs.filter(student=user)
         if user.role == User.Role.MENTOR:
-            return qs.filter(placement__mentor=user)
+            from django.db.models import Q
+            return qs.filter(Q(placement__mentor=user) | Q(mentor=user))
         if user.role == User.Role.LECTURER:
             return qs.filter(placement__lecturer=user)
         return qs
@@ -176,12 +177,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         activity = self.get_object()
         user = self.request.user
-        if user.role == User.Role.STUDENT and activity.status not in {
-            ActivityLog.Status.PENDING,
-            ActivityLog.Status.REJECTED,
-        }:
-            raise PermissionDenied("Only pending or rejected activities can be edited.")
-        serializer.save()
+        if user.role == User.Role.STUDENT:
+            if activity.status not in {
+                ActivityLog.Status.PENDING,
+                ActivityLog.Status.REJECTED,
+            }:
+                raise PermissionDenied("Only pending or rejected activities can be edited.")
+            serializer.save(status=ActivityLog.Status.PENDING)
+        else:
+            serializer.save()
         create_audit_log(user, "edit", f"Updated activity: {activity.title}")
 
     def perform_destroy(self, instance):
