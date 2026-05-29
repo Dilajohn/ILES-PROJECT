@@ -103,7 +103,7 @@ export default function LandingPage() {
 
         {/* Hero text content */}
         <div className={styles.heroContent}>
-          <div className={styles.heroTagPill}>🎓 Makerere University COCIT</div>
+          <div className={styles.heroTagPill}>🎓 Makerere University COCIS</div>
           <h1 className={styles.heroTitle}>Your Internship Journey,<br/>Managed Here</h1>
           <p className={styles.heroSub}>
             Internship Logging &amp; Evaluation System — bridging students,<br/>supervisors &amp; institutions with technology
