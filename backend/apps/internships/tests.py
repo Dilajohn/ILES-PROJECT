@@ -256,3 +256,73 @@ class StudentActivityPermissionTests(TestCase):
         self.rejected.refresh_from_db()
         self.assertEqual(self.rejected.status, "pending")
         self.assertEqual(self.rejected.title, "Updated rejected activity title")
+
+
+class RetroactivePlacementActivityTests(TestCase):
+    def setUp(self):
+        self.user_model = get_user_model()
+        self.student = self.user_model.objects.create_user(
+            email="atim@example.com",
+            password="StrongPass123!",
+            full_name="Atim Winnie",
+            role="student",
+        )
+        self.mentor = self.user_model.objects.create_user(
+            email="nyakojo@example.com",
+            password="StrongPass123!",
+            full_name="Nyakojo Paul",
+            role="mentor",
+        )
+        self.lecturer = self.user_model.objects.create_user(
+            email="byansi@example.com",
+            password="StrongPass123!",
+            full_name="Byansi David",
+            role="lecturer",
+        )
+        self.company = Company.objects.create(
+            name="MTN Uganda",
+            sector="Telecom",
+            district="Kampala",
+            max_capacity=5,
+        )
+        self.period = InternshipPeriod.objects.create(
+            name="CIT IT Period",
+            start_date="2026-05-01",
+            end_date="2026-08-31",
+            weeks=16,
+            status="active",
+        )
+        self.activity = ActivityLog.objects.create(
+            placement=None,
+            student=self.student,
+            mentor=None,
+            title="Weekly log activity",
+            description="Doing logs",
+            skills="writing",
+            hours_spent=8,
+            activity_date="2026-05-20",
+            status="pending",
+        )
+        self.placement = Placement.objects.create(
+            student=self.student,
+            company=self.company,
+            lecturer=self.lecturer,
+            mentor=self.mentor,
+            period=self.period,
+            created_by=self.lecturer,
+        )
+        self.client = APIClient()
+
+    def test_mentor_can_see_retroactive_activity(self):
+        self.client.force_authenticate(self.mentor)
+        response = self.client.get("/api/v1/activities/")
+        self.assertEqual(response.status_code, 200)
+        activity_ids = [act["id"] for act in response.json()["results"]]
+        self.assertIn(self.activity.id, activity_ids)
+
+    def test_lecturer_can_see_retroactive_activity(self):
+        self.client.force_authenticate(self.lecturer)
+        response = self.client.get("/api/v1/activities/")
+        self.assertEqual(response.status_code, 200)
+        activity_ids = [act["id"] for act in response.json()["results"]]
+        self.assertIn(self.activity.id, activity_ids)
