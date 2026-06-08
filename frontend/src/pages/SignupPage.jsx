@@ -207,7 +207,7 @@ export default function SignupPage() {
               <input
                 type="text"
                 className={`${styles.input}${errors.registrationNumber ? ' ' + styles.inputErr : ''}`}
-                placeholder="e.g. 2022/HD01/001U"
+                placeholder="e.g. 25/U/28777/PSA"
                 value={form.registrationNumber}
                 onChange={set('registrationNumber')}
               />
