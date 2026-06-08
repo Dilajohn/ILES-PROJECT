@@ -9,7 +9,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.common.permissions import IsAdmin
 from apps.users.models import User
-from apps.users.serializers import ChangePasswordSerializer, SignupSerializer, UserSerializer
+from apps.users.serializers import (
+    AdminCreateStaffSerializer,
+    ChangePasswordSerializer,
+    SignupSerializer,
+    UserSerializer,
+)
 from apps.users.services import log_user_event
 
 logger = logging.getLogger("iles")
@@ -133,6 +138,25 @@ class UserViewSet(
         log_user_event(request.user, "create", f"Admin created user: {user.email}")
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
+    @action(
+        detail=False, methods=["post"],
+        permission_classes=[IsAdmin], url_path="create-staff"
+    )
+    def create_staff(self, request):
+        """
+        Admin-only: create a lecturer or field-mentor account with a
+        pre-set password. The user is flagged must_change_password=True
+        so the frontend can prompt them to choose their own password.
+        """
+        serializer = AdminCreateStaffSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        log_user_event(
+            request.user, "create",
+            f"Admin created {user.role} account: {user.email}"
+        )
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
     @action(detail=False, methods=["get"], url_path="me")
     def me(self, request):
         return Response(UserSerializer(request.user).data)
@@ -150,9 +174,33 @@ class UserViewSet(
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         request.user.set_password(serializer.validated_data["new_password"])
-        request.user.save(update_fields=["password"])
+        # Clear the first-login flag if it was set by admin
+        request.user.must_change_password = False
+        request.user.save(update_fields=["password", "must_change_password"])
         log_user_event(request.user, "edit", f"Password updated: {request.user.email}")
         return Response({"detail": "Password updated successfully."})
+
+    @action(
+        detail=True, methods=["patch"],
+        permission_classes=[IsAdmin], url_path="reset-password"
+    )
+    def admin_reset_password(self, request, pk=None):
+        """Admin resets a staff member's password and forces a change on next login."""
+        target_user = self.get_object()
+        new_password = request.data.get("password", "").strip()
+        if not new_password or len(new_password) < 8:
+            return Response(
+                {"detail": "A new password of at least 8 characters is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target_user.set_password(new_password)
+        target_user.must_change_password = True
+        target_user.save(update_fields=["password", "must_change_password"])
+        log_user_event(
+            request.user, "edit",
+            f"Admin reset password for: {target_user.email}"
+        )
+        return Response({"detail": f"Password reset for {target_user.full_name}. They will be prompted to change it."})
 
     @action(detail=True, methods=["patch"], permission_classes=[IsAdmin], url_path="toggle-status")
     def toggle_status(self, request, pk=None):

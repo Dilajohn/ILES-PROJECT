@@ -139,9 +139,17 @@ class ActivityViewSet(viewsets.ModelViewSet):
             return qs.filter(student=user)
         if user.role == User.Role.MENTOR:
             from django.db.models import Q
-            return qs.filter(Q(placement__mentor=user) | Q(mentor=user))
+            # Activities where this user is the assigned mentor directly,
+            # OR where the student's placement is under this mentor
+            return qs.filter(Q(mentor=user) | Q(placement__mentor=user)).distinct()
         if user.role == User.Role.LECTURER:
-            return qs.filter(placement__lecturer=user)
+            from django.db.models import Q
+            # Activities where the student's placement is under this lecturer,
+            # OR where no placement is set but the student has a placement linked to this lecturer
+            return qs.filter(
+                Q(placement__lecturer=user)
+                | Q(placement__isnull=True, student__placements__lecturer=user)
+            ).distinct()
         return qs
 
     def get_permissions(self):
@@ -173,6 +181,20 @@ class ActivityViewSet(viewsets.ModelViewSet):
             status=ActivityLog.Status.PENDING,
         )
         create_audit_log(self.request.user, "create", f"Submitted activity: {activity.title}")
+
+        # Notify the assigned mentor so the activity appears in their dashboard
+        if mentor:
+            create_notification(
+                mentor,
+                f'Student {student.full_name} submitted a new activity: "{activity.title}". Please review.',
+            )
+        # Notify the linked lecturer as well
+        lecturer = getattr(placement, "lecturer", None)
+        if lecturer:
+            create_notification(
+                lecturer,
+                f'Student {student.full_name} submitted a new activity: "{activity.title}".',
+            )
 
     def perform_update(self, serializer):
         activity = self.get_object()

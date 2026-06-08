@@ -40,6 +40,8 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=Role.choices, db_index=True)
     phone_number = models.CharField(max_length=32, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    # Set to True when admin creates the account so the user is prompted to change password
+    must_change_password = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

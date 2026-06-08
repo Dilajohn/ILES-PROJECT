@@ -18,9 +18,10 @@ class UserSerializer(serializers.ModelSerializer):
         model  = User
         fields = [
             "id", "email", "full_name", "role", "phone_number",
-            "is_active", "date_joined", "last_login", "student_profile",
+            "is_active", "must_change_password", "date_joined", "last_login",
+            "student_profile",
         ]
-        read_only_fields = ["id", "role", "date_joined", "last_login"]
+        read_only_fields = ["id", "role", "date_joined", "last_login", "must_change_password"]
 
     def validate_email(self, value):
         email = value.strip().lower()
@@ -116,6 +117,50 @@ class SignupSerializer(serializers.ModelSerializer):
                     "academic_year":       academic_year,
                 },
             )
+        return user
+
+
+class AdminCreateStaffSerializer(serializers.ModelSerializer):
+    """
+    Used by admins to create lecturer / field-mentor accounts.
+    The admin sets the password directly — no confirm required.
+    The created user will be flagged with must_change_password=True so the
+    frontend can prompt them to set their own password on first login.
+    """
+    password = serializers.CharField(
+        write_only=True, min_length=8, style={"input_type": "password"}
+    )
+
+    class Meta:
+        model  = User
+        fields = ["email", "full_name", "role", "phone_number", "password"]
+
+    def validate_email(self, value):
+        v = value.strip().lower()
+        if User.objects.filter(email__iexact=v).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
+        return v
+
+    def validate_role(self, value):
+        allowed = {User.Role.LECTURER, User.Role.MENTOR}
+        if value not in allowed:
+            raise serializers.ValidationError(
+                "Admin can only create accounts for lecturers and field mentors."
+            )
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
+        user.must_change_password = True   # prompt first-login password change
+        user.save()
         return user
 
 
